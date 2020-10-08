@@ -1,0 +1,68 @@
+
+
+#disableipv6  
+    ip6tables -P INPUT DROP  
+    ip6tables -P FORWARD DROP  
+    ip6tables -P OUTPUT DROP  
+  
+#Allow established sessions to receive traffic 
+    iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 
+
+#Only allow established, related incoming  
+    iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT  
+
+#Block Shellshock  
+    iptables -A INPUT -m string --algo bm --hex-string '|28 29 20 7B|' -j DROP  
+
+#Prevent SMURF attacks  
+    iptables -A INPUT -p icmp -m icmp --icmp-type address-mask-request -j DROP  
+    iptables -A INPUT -p icmp -m icmp --icmp-type timestamp-request -j DROP  
+    iptables -A INPUT -p icmp -m limit --limit 2/second --limit-burst 2 -j ACCEPT 
+    Ip6tables -A INPUT -p icmpv6 -m limit --limit 2/second --limit-burst 2 -j ACCEPT 
+
+#prevent SYN flood  
+    iptables -A FORWARD -p tcp --syn -m limit --limit 10/s -j ACCEPT  
+
+#prevent default Portscan  
+    iptables -A FORWARD -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 10/s -j ACCEPT  
+
+#prevent Ping-flood  
+    iptables -A FORWARD -p icmp --icmp-type echo-request -m limit --limit 10/s -j ACCEPT  
+
+#Force a specific NTP in this case #ntpip  
+    iptables -t nat -A OUTPUT -p tcp --dport 123 -j DNAT --to-destination #ntpip:123  
+    iptables -t nat -A OUTPUT -p udp --dport 123 -j DNAT --to-destination #ntpip:123  
+
+#Anti-Spoofing on loopback ::1 & the unique local address fe80::/1   
+    ip6tables -A INPUT ! -i lo -s ::1/128 -j DROP  
+    ip6tables -A INPUT -i $WAN_IF -s fe80::/1 -j DROP  
+    ip6tables -A FORWARD -s ::1/128 -j DROP  
+    ip6tables -A FORWARD -i $WAN_IF -s fe80::/1 -j DROP  
+
+#Prevent SYN attacks  
+    iptables -I TCP -p tcp --match recent --update --seconds 60 --name TCP-PORTSCAN -j DROP  
+    ip6tables -I TCP -p tcp --match recent --update --seconds 60 --name TCP-PORTSCAN -j DROP  
+    iptables -A INPUT -p tcp --match recent --set --name TCP-PORTSCAN -j DROP  
+    ip6tables -A INPUT -p tcp --match recent --set --name TCP-PORTSCAN -j DROP   
+
+#Protection from PING of Death attack  
+    iptables -N PING_OF_DEATH  
+    iptables -A PING_OF_DEATH -p icmp --icmp-type echo-request -m hashlimit --hashlimit 1/s --hashlimit-burst 10 --hashlimit-htable-expire 300000 --hashlimit-mode srcip --hashlimit-name t_PING_OF_DEATH -j RETURN  
+    iptables -A PING_OF_DEATH -j DROP  
+    iptables -A INPUT -p icmp --icmp-type echo-request -j PING_OF_DEATH  
+
+#prevent port scanning, SYN flood attacks, invalid packages, malformed XMAS packets, NULL packets, etc.  
+    iptables -N PORTSCAN  
+    iptables -A PORTSCAN -p tcp --tcp-flags ACK,FIN FIN -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ACK,PSH PSH -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ACK,URG URG -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags FIN,RST FIN,RST -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags SYN,RST SYN,RST -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ALL ALL -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ALL NONE -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ALL FIN,PSH,URG -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,FIN,PSH,URG -j DROP  
+    iptables -A PORTSCAN -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP  
+    iptables -A INPUT -f -j DROP  
+    iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
