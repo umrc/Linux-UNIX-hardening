@@ -1,5 +1,3 @@
-
-
 #disableipv6  
     ip6tables -P INPUT DROP  
     ip6tables -P FORWARD DROP  
