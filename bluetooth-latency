@@ -1,0 +1,21 @@
+#Find necessary info about the bluetooth device (while it is connected!)
+
+pactl list | grep -Pzo '.*bluez_card(.*\n)*'
+#The output should be something like
+#Name: bluez_card.28_11_A5_84_B6_F9
+#Driver: module-bluez5-device.c
+#...
+#Ports:
+#speaker-output: Speaker (priority: 0, latency offset: 0 usec, available)
+#    Part of profile(s): a2dp_sink, headset_head_unit
+#speaker-input: Bluetooth Input (priority: 0, latency offset: 0 usec, not available)
+#    Part of profile(s): headset_head_unit
+#We see that the buffers have currently 0 latency. In the next step, you will need the NAME and PORT of your output. In this example, these are bluez_card.28_11_A5_84_B6_F9 and speaker-output, respectively.
+#Set the buffer size (latency) of your card to a suitable value with this command pattern:
+
+pactl set-port-latency-offset <NAME> <PORT> <BUFFER_SIZE_MICROSECONDS> 
+#The latency unit of the following command is microseconds, so I'm using a 50 millisecond buffer for my command here:
+
+pactl set-port-latency-offset bluez_card.28_11_A5_84_B6_F9 speaker-output 50000 
+#Restart your bluetooth service to apply your change
+sudo service bluetooth restart
