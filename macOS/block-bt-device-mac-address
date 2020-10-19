@@ -1,0 +1,11 @@
+sudo plutil -convert xml1 /Library/Preferences/com.apple.Bluetooth.plist
+#Find the MAC address of the offending Bluetooth device. You can find it by searching /Library/Preferences/com.apple.Bluetooth.plist. Add this section to the plist:
+
+<key>IgnoredDevices</key>
+<array>
+        <string>ff-ff-ff-ff-ff-ff</string>
+</array>
+#Where FF:FF:FF:FF:FF:FF is the MAC address of the offending Bluetooth device.
+
+sudo plutil -convert binary1 /Library/Preferences/com.apple.Bluetooth.plist
+#Reboot OS X if necessary.
